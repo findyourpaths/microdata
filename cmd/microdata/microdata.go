@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/astappiev/microdata"
+	"github.com/findyourpaths/microdata"
 )
 
 var fnMap = template.FuncMap{

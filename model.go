@@ -44,9 +44,10 @@ type ValueList []interface{}
 type PropertyMap map[string]ValueList
 
 type Item struct {
-	Types      []string    `json:"type"`
-	Properties PropertyMap `json:"properties"`
-	ID         string      `json:"id,omitempty"`
+	Types      []string            `json:"type"`
+	Properties PropertyMap         `json:"properties"`
+	InnerHTML  map[string][]string `json:"innerHTML,omitempty"` // Raw HTML content for text-based properties
+	ID         string              `json:"id,omitempty"`
 }
 
 // addType adds the value to the types list.
@@ -57,6 +58,12 @@ func (i *Item) addType(value string) {
 // addProperty adds the property, value pair to the properties map. It appends to any existing property.
 func (i *Item) addProperty(key string, value interface{}) {
 	i.Properties[key] = append(i.Properties[key], value)
+}
+
+// addPropertyWithHTML adds the property, value pair along with its raw HTML content.
+func (i *Item) addPropertyWithHTML(key string, value interface{}, innerHTML string) {
+	i.Properties[key] = append(i.Properties[key], value)
+	i.InnerHTML[key] = append(i.InnerHTML[key], innerHTML)
 }
 
 // addItem adds the property, value pair to the properties map. It appends to any existing property.
@@ -141,5 +148,6 @@ func NewItem() *Item {
 	return &Item{
 		Types:      make([]string, 0),
 		Properties: make(PropertyMap),
+		InnerHTML:  make(map[string][]string),
 	}
 }

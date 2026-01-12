@@ -260,7 +260,7 @@ func TestJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := string(b)
-	expected := `{"items":[{"type":["https://example.com/Person"],"properties":{"age":["22 years old.."],"name":["Penelope"]}}]}`
+	expected := `{"items":[{"type":["https://example.com/Person"],"properties":{"age":["22 years old.."],"name":["Penelope"]},"innerHTML":{"age":["22 years old.."],"name":["Penelope"]}}]}`
 	if result != expected {
 		t.Errorf("Result should have been \"%s\", but it was \"%s\"", expected, result)
 	}
@@ -316,7 +316,7 @@ func TestNestedItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := string(b)
-	expected := `{"items":[{"type":["https://example.com/Person"],"properties":{"age":["22 years old.."],"name":["Penelope"]}},{"type":["https://example.com/Breadcrumb"],"properties":{"title":["profile"],"url":["https://example.com/users/1"]}}]}`
+	expected := `{"items":[{"type":["https://example.com/Person"],"properties":{"age":["22 years old.."],"name":["Penelope"]},"innerHTML":{"age":["22 years old.."],"name":["Penelope"]}},{"type":["https://example.com/Breadcrumb"],"properties":{"title":["profile"],"url":["https://example.com/users/1"]},"innerHTML":{"title":["profile"]}}]}`
 	if result != expected {
 		t.Errorf("Result should have been \"%s\", but it was \"%s\"", expected, result)
 	}
@@ -344,7 +344,7 @@ func TestParseW3CBookSnippet(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := string(b)
-	expected := `{"items":[{"type":["https://vocab.example.net/book"],"properties":{"author":["Peter F. Hamilton"],"pubdate":["1996-01-26"],"title":["The Reality Dysfunction"]},"id":"urn:isbn:0-330-34032-8"}]}`
+	expected := `{"items":[{"type":["https://vocab.example.net/book"],"properties":{"author":["Peter F. Hamilton"],"pubdate":["1996-01-26"],"title":["The Reality Dysfunction"]},"innerHTML":{"author":["Peter F. Hamilton"],"title":["The Reality Dysfunction"]},"id":"urn:isbn:0-330-34032-8"}]}`
 	if result != expected {
 		t.Errorf("Result should have been \"%s\", but it was \"%s\"", expected, result)
 	}
@@ -362,7 +362,7 @@ func TestParseW3CGalleySnippet(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := string(b)
-	expected := `{"items":[{"type":["https://n.whatwg.org/work"],"properties":{"license":["https://www.opensource.org/licenses/mit-license.php"],"title":["The house I found."],"work":["/images/house.jpeg"]}},{"type":["https://n.whatwg.org/work"],"properties":{"license":["https://www.opensource.org/licenses/mit-license.php"],"title":["The mailbox."],"work":["/images/mailbox.jpeg"]}}]}`
+	expected := `{"items":[{"type":["https://n.whatwg.org/work"],"properties":{"license":["https://www.opensource.org/licenses/mit-license.php"],"title":["The house I found."],"work":["/images/house.jpeg"]},"innerHTML":{"title":["The house I found."]}},{"type":["https://n.whatwg.org/work"],"properties":{"license":["https://www.opensource.org/licenses/mit-license.php"],"title":["The mailbox."],"work":["/images/mailbox.jpeg"]},"innerHTML":{"title":["The mailbox."]}}]}`
 	if result != expected {
 		t.Errorf("Result should have been \"%s\", but it was \"%s\"", expected, result)
 	}
@@ -380,9 +380,78 @@ func TestParseW3CBlogSnippet(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := string(b)
-	expected := `{"items":[{"type":["https://schema.org/BlogPosting"],"properties":{"comment":[{"type":["https://schema.org/UserComments"],"properties":{"commentTime":["2013-08-29"],"creator":[{"type":["https://schema.org/Person"],"properties":{"name":["Greg"]}}],"url":["https://blog.example.com/progress-report#c1"]}},{"type":["https://schema.org/UserComments"],"properties":{"commentTime":["2013-08-29"],"creator":[{"type":["https://schema.org/Person"],"properties":{"name":["Charlotte"]}}],"url":["https://blog.example.com/progress-report#c2"]}}],"datePublished":["2013-08-29"],"headline":["Progress report"],"url":["https://blog.example.com/progress-report?comments=0"]}}]}`
+	expected := `{"items":[{"type":["https://schema.org/BlogPosting"],"properties":{"comment":[{"type":["https://schema.org/UserComments"],"properties":{"commentTime":["2013-08-29"],"creator":[{"type":["https://schema.org/Person"],"properties":{"name":["Greg"]},"innerHTML":{"name":["Greg"]}}],"url":["https://blog.example.com/progress-report#c1"]}},{"type":["https://schema.org/UserComments"],"properties":{"commentTime":["2013-08-29"],"creator":[{"type":["https://schema.org/Person"],"properties":{"name":["Charlotte"]},"innerHTML":{"name":["Charlotte"]}}],"url":["https://blog.example.com/progress-report#c2"]}}],"datePublished":["2013-08-29"],"headline":["Progress report"],"url":["https://blog.example.com/progress-report?comments=0"]},"innerHTML":{"headline":["Progress report"]}}]}`
 	if result != expected {
 		t.Errorf("Result should have been \"%s\", but it was \"%s\"", expected, result)
+	}
+}
+
+// TestInnerHTML verifies that InnerHTML is captured for text-based properties
+func TestInnerHTML(t *testing.T) {
+	html := `
+	<div itemscope itemtype="https://schema.org/Event">
+		<span itemprop="name">Test Event</span>
+		<div itemprop="description"><p>First paragraph.</p><p>Second paragraph.</p></div>
+	</div>`
+
+	data := ParseData(html, t)
+
+	// Check property value (innerText)
+	if data.Items[0].Properties["name"][0].(string) != "Test Event" {
+		t.Errorf("Expected name to be 'Test Event', got %v", data.Items[0].Properties["name"][0])
+	}
+
+	// Check InnerHTML for name (simple text content)
+	if data.Items[0].InnerHTML["name"][0] != "Test Event" {
+		t.Errorf("Expected name InnerHTML to be 'Test Event', got %v", data.Items[0].InnerHTML["name"][0])
+	}
+
+	// Check property value (innerText collapses HTML structure)
+	descValue := data.Items[0].Properties["description"][0].(string)
+	if descValue != "First paragraph.Second paragraph." {
+		t.Errorf("Expected description innerText to be 'First paragraph.Second paragraph.', got %v", descValue)
+	}
+
+	// Check InnerHTML preserves HTML structure
+	descHTML := data.Items[0].InnerHTML["description"][0]
+	if descHTML != "<p>First paragraph.</p><p>Second paragraph.</p>" {
+		t.Errorf("Expected description InnerHTML to be '<p>First paragraph.</p><p>Second paragraph.</p>', got %v", descHTML)
+	}
+}
+
+// TestInnerHTMLNotSetForAttributeBasedProperties verifies that InnerHTML is empty for attribute-based properties
+func TestInnerHTMLNotSetForAttributeBasedProperties(t *testing.T) {
+	html := `
+	<div itemscope itemtype="https://schema.org/Event">
+		<a itemprop="url" href="https://example.com/event">Event Link</a>
+		<img itemprop="image" src="https://example.com/image.jpg">
+		<meta itemprop="startDate" content="2024-01-01">
+	</div>`
+
+	data := ParseData(html, t)
+
+	// URL should be from href attribute, no InnerHTML
+	if data.Items[0].Properties["url"][0].(string) != "https://example.com/event" {
+		t.Errorf("Expected url to be 'https://example.com/event', got %v", data.Items[0].Properties["url"][0])
+	}
+	if len(data.Items[0].InnerHTML["url"]) != 0 {
+		t.Errorf("Expected no InnerHTML for url (href-based), got %v", data.Items[0].InnerHTML["url"])
+	}
+
+	// Image should be from src attribute, no InnerHTML
+	if data.Items[0].Properties["image"][0].(string) != "https://example.com/image.jpg" {
+		t.Errorf("Expected image to be 'https://example.com/image.jpg', got %v", data.Items[0].Properties["image"][0])
+	}
+	if len(data.Items[0].InnerHTML["image"]) != 0 {
+		t.Errorf("Expected no InnerHTML for image (src-based), got %v", data.Items[0].InnerHTML["image"])
+	}
+
+	// Meta content should not have InnerHTML
+	if data.Items[0].Properties["startDate"][0].(string) != "2024-01-01" {
+		t.Errorf("Expected startDate to be '2024-01-01', got %v", data.Items[0].Properties["startDate"][0])
+	}
+	if len(data.Items[0].InnerHTML["startDate"]) != 0 {
+		t.Errorf("Expected no InnerHTML for startDate (content-based), got %v", data.Items[0].InnerHTML["startDate"])
 	}
 }
 

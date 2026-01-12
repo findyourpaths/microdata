@@ -143,10 +143,14 @@ func (p *parser) readItem(item *Item, node *html.Node, isToplevel bool) {
 		}
 		return
 	case !hasScope && hasProp:
-		if s := p.getValue(node); len(s) > 0 {
+		if s, innerHTML := p.getValue(node); len(s) > 0 {
 			for _, propName := range strings.Split(itemprops, " ") {
 				if len(propName) > 0 {
-					item.addProperty(propName, s)
+					if innerHTML != "" {
+						item.addPropertyWithHTML(propName, s, innerHTML)
+					} else {
+						item.addProperty(propName, s)
+					}
 				}
 			}
 		}
@@ -186,10 +190,9 @@ func (p *parser) readAttr(item *Item, node *html.Node) {
 	}
 }
 
-// getValue returns the value of the property, value pair in the given node.
-func (p *parser) getValue(node *html.Node) string {
-	var propValue string
-
+// getValue returns the value and innerHTML of the property in the given node.
+// innerHTML is only set for text-based properties (not attribute-based like href, src, etc.)
+func (p *parser) getValue(node *html.Node) (propValue string, innerHTML string) {
 	switch node.DataAtom {
 	case atom.Meta:
 		if value, ok := getAttr("content", node); ok {
@@ -230,9 +233,10 @@ func (p *parser) getValue(node *html.Node) string {
 		// The "content" attribute can be found on other tags besides the meta tag.
 		if value, ok := getAttr("content", node); ok {
 			propValue = value
-			break
+			return
 		}
 
+		// Extract text content
 		var buf bytes.Buffer
 		walkNodes(node, func(n *html.Node) {
 			if n.Type == html.TextNode {
@@ -240,9 +244,16 @@ func (p *parser) getValue(node *html.Node) string {
 			}
 		})
 		propValue = buf.String()
+
+		// Also capture innerHTML for text-based properties
+		var htmlBuf bytes.Buffer
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			html.Render(&htmlBuf, c)
+		}
+		innerHTML = htmlBuf.String()
 	}
 
-	return propValue
+	return
 }
 
 // newParser returns a parser that converts the contents of the given node tree to microdata.

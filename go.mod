@@ -1,4 +1,4 @@
-module github.com/astappiev/microdata
+module github.com/findyourpaths/microdata
 
 go 1.21
 
